@@ -35,8 +35,13 @@ Lo encontramos con `notebooks/exploracion.ipynb`. Entrenamiento: 6.237 filas. Te
 
 | Id | Columna | Qué pasa (con cifras) | Por qué importa | Fase |
 | --- | --- | --- | --- | --- |
-| P1 | `estado_operacion` | 620 filas (10 %) son anuncios retirados, que no se vendieron. El test solo tiene ventas | Su precio es lo que se pedía, no lo que se pagó | 1 · Limpieza |
-| | | | | |
+| P1 | `estado_operacion` | En entrenamiento, 620 de 6.237 filas (9,9 %) son anuncios retirados; el test solo contiene ventas. | El precio de un anuncio retirado es el pedido, no el precio de una venta. | 1 · Limpieza |
+| P2 | `districte`, `barri` | Ambas columnas faltan en las mismas 1.503 filas de entrenamiento (24,1 %) y 924 de test (23,1 %). Entre esas filas, `municipi` es Barcelona en 97 casos de entrenamiento y 63 de test; en el resto es otro municipio. | La zona sirve para distinguir niveles de precio. Que falte `barri` no significa siempre que la vivienda esté fuera de Barcelona. | 2 · Transformaciones |
+| P3 | `superficie_util` | Faltan 2.046 de 6.237 valores en entrenamiento (32,8 %) y 1.305 de 4.002 en test (32,6 %). Los valores observados van de 20 a 348 m² en entrenamiento y de 22 a 414 m² en test. | Es una medida del tamaño de la vivienda y podría aportar información distinta de la superficie construida; su uso y tratamiento de vacíos deben probarse. | 2 · Transformaciones |
+| P4 | `parking` | Faltan 626 de 6.237 valores en entrenamiento (10,0 %) y 398 de 4.002 en test (9,9 %). Los valores observados son `No`, `Sí`, `Opcional` e `Incluido`. | El parking puede relacionarse con el precio, pero un vacío no equivale necesariamente a `No`; `Opcional` e `Incluido` tampoco son la misma categoría observada. | 2 · Transformaciones |
+| P5 | `estado` | Faltan 427 de 6.237 valores en entrenamiento (6,8 %) y 291 de 4.002 en test (7,3 %). Los valores observados son `a reformar`, `buen estado`, `reformado` y `obra nueva`. | El estado puede relacionarse con el precio; no se debe convertir una categoría nominal en una escala numérica sin justificar el orden y las distancias. | 2 · Transformaciones |
+| P6 | `tipo` | No hay valores vacíos. Hay 11 escrituras literales; al ignorar mayúsculas y acentos quedan seis grupos: piso, ático, estudio, casa, dúplex y chalet. Ejemplos: `PISO`/`piso`/`Piso`, `Atico`/`Ático`, `Duplex`/`Dúplex`. | Si las variantes no se normalizan, una misma categoría puede representarse como categorías distintas. | 2 · Transformaciones |
+| P7 | `superficie_construida` | Hay 21 ceros en entrenamiento y 9 en test. Hay 2 valores superiores a 1.000 m² en entrenamiento (máximo 1.590) y 6 en test (máximo 1.900). | Los ceros y los valores extremos pueden distorsionar el ajuste y las tasaciones; falta definir qué regla, si alguna, se probará para corregirlos. | 1 · Limpieza |
 
 ## 4. Estrategias y experimentos
 
@@ -65,16 +70,16 @@ y qué esperáis que pase (la hipótesis). Después, con experimentos.csv, relle
 La primera fila de cada fase es un ejemplo para arrancar: podéis quedárosla, cambiarla o borrarla.
 -->
 
-**Regla de decisión** (escrita antes de ejecutar nada): <!-- Cuándo aceptáis una estrategia. Por ejemplo: "si baja el MAE de su referencia en al menos 4 de las 5 particiones y en al menos N € de media". ¿Qué hacéis si no se cumple? -->
+**Regla de decisión** (escrita antes de ejecutar nada): una estrategia se acepta si reduce el MAE medio al menos 1.000 € respecto a su referencia y mejora el MAE en al menos 4 de las 5 particiones. La mejora por partición es `mae_referencia - mae_estrategia`; una mejora positiva cuenta como una partición mejorada. Si no cumple ambas condiciones, se descarta.
 
 Cómo leemos los resultados: `src.experimentos` da el MAE de cada partición (`mae_p1` … `mae_p5`). Comparamos cada estrategia con su referencia partición a partición, porque hay particiones más difíciles que otras para todas las estrategias a la vez.
 
 ### Punto de partida (ejemplo resuelto)
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| E0 | baseline | €/m² mediano de la zona × superficie construida | — | — | | — | La tasación que hay que batir |
-| E1 | minimo | Regresión lineal con `superficie_construida`, `habitaciones`, `banos`, `distancia_centro_km` y `poblacion_zona`, sin transformar | — | _Vuestra hipótesis: ¿mejor o peor que E0? ¿Por qué?_ | | — | |
+| Id | Tipo     | Qué cambia                                                                                                                                 | Referencia | Hipótesis                                                 | MAE medio ± sd | Mejora media · particiones | Conclusión                    |
+| -- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------- | --------------- | --------------------------- | ------------------------------ |
+| E0 | baseline | €/m² mediano de la zona × superficie construida                                                                                          | —         | —                                                         |                 | —                          | La tasación que hay que batir |
+| E1 | minimo   | Regresión lineal con `superficie_construida`, `habitaciones`, `banos`, `distancia_centro_km` y `poblacion_zona`, sin transformar | —         | _Vuestra hipótesis: ¿mejor o peor que E0? ¿Por qué?_ | `126,535`     | —                          |                                |
 
 ### Fase 1 · Limpieza
 
@@ -85,24 +90,30 @@ la cambiéis, volved a ejecutar E0 y E1 y anotad sus cifras nuevas aquí.
 El resto de la limpieza (por ejemplo, la superficie) sí son estrategias, dentro del Pipeline.
 -->
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| L1 | estrategia | Modelo mínimo con la superficie corregida | E1 | Mejora: las superficies de 1.500 m² inflan la tasación | | | |
-| | | | | | | | |
+| Id | Tipo     | Qué cambia                                                                               | Referencia | Hipótesis                                               | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | -------- | ----------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------------- | --------------- | --------------------------- | ----------- |
+| L1 | estrategia | En `superficie_construida`, sustituye los ceros por la mediana aprendida en el fold de entrenamiento; deja los demás valores, incluidos los extremos, sin cambios. | E1 | Corregir los ceros podría reducir su influencia en las tasaciones. | | | |
+| L2 | estrategia | Añade `superficie_util` como variable e imputa sus vacíos con la mediana aprendida solo con las filas de entrenamiento de cada fold. | E1 | La superficie útil podría aportar información sobre el precio. | | | |
 
 ### Fase 2 · Transformaciones
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| T1 | estrategia | Añade la zona como categoría | L1 | Mejora mucho: en Pedralbes el m² vale el triple que en Nou Barris | | | |
-| | | | | | | | |
+Para las categorías se propone probar One-Hot Encoding; no se asignarán códigos numéricos ordinales sin una justificación.
+
+| Id | Tipo            | Qué cambia                                                                                                                                                                                                                                          | Referencia | Hipótesis                                                         | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------ | --------------- | --------------------------- | ----------- |
+| T1 | estrategia | Añade la zona definida en R2 como categoría, usando el municipio cuando falte `barri`. | L2 | La zona puede recoger diferencias de precio geográficas. | | | |
+| T2 | estrategia | Añade `parking`; en esta variante, los vacíos se tratan como `No` y las demás categorías se mantienen distintas. | T1 | La variable podría aportar información, pero esta variante prueba la hipótesis de que un vacío equivale a `No`. | | | |
+| T3 | estrategia | Igual que T2, pero los vacíos de `parking` se conservan como una categoría separada `Sin dato`. | T2 | Distinguir un dato desconocido de `No` podría evitar una imputación incorrecta. | | | |
+| T4 | estrategia | Añade `estado` como categoría y conserva los vacíos como `Sin dato`. | T3 | El estado de conservación podría aportar información sobre el precio. | | | |
+| T5 | estrategia | Añade `tipo` como categoría, normalizando mayúsculas y acentos antes de codificarla. | T4 | El tipo de vivienda podría aportar información sobre el precio. | | | |
+| T6 | estrategia | Para `municipi == Barcelona` y `barri` ausente, imputa primero el barrio más frecuente del mismo código postal usando solo el fold de entrenamiento. Si hay empate o no existe ese código postal, usa el centroide de barrio más cercano calculado con ese fold. Si no se puede inferir un único barrio, usa `municipi` (`Barcelona`). | T1 | La inferencia geográfica podría recuperar información de barrio sin usar validación ni test para aprender los mapeos. | | | |
 
 ### Fase 3 · Variables nuevas
 
 | Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| N1 | caracteristica | Añade la relación baños / habitaciones | Última aceptada | _Vuestra hipótesis_ | | | |
-| | | | | | | | |
+| N1 | caracteristica | Añade `banos / habitaciones`; cuando `habitaciones == 0`, deja la relación ausente y la imputa con la mediana de la relación aprendida en el fold de entrenamiento. | Última aceptada | La relación entre baños y habitaciones podría aportar información adicional. | | | |
+| N2 | caracteristica | Imputa primero `superficie_util` con la mediana aprendida en el fold de entrenamiento y añade `superficie_util / habitaciones`; cuando `habitaciones == 0`, deja la relación ausente y la imputa con la mediana de la relación aprendida en ese fold. | Última aceptada | La superficie útil relativa al número de habitaciones podría aportar información adicional. | | | |
 
 ### Fase 4 · Modelo
 
@@ -111,10 +122,14 @@ Las mismas variables que la última estrategia aceptada en la fase 3; solo cambi
 Una fila por valor de λ. Escribid antes cómo elegiréis λ y qué haréis si ningún Ridge mejora a la regresión lineal.
 -->
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 | estrategia | Ridge con λ = 0,01 | Última aceptada | Igual que la regresión lineal: λ muy pequeño | | | |
-| | | | | | | | |
+| Id | Tipo       | Qué cambia         | Referencia       | Hipótesis                                      | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | ---------- | ------------------- | ---------------- | ----------------------------------------------- | --------------- | --------------------------- | ----------- |
+| M1 | estrategia | Ridge con `alpha = 0,001` | Regresión lineal de la última estrategia aceptada | Regularización muy pequeña. | | | |
+| M2 | estrategia | Ridge con `alpha = 0,01` | Regresión lineal de la última estrategia aceptada | Regularización pequeña. | | | |
+| M3 | estrategia | Ridge con `alpha = 0,1` | Regresión lineal de la última estrategia aceptada | Regularización moderada. | | | |
+| M4 | estrategia | Ridge con `alpha = 1` | Regresión lineal de la última estrategia aceptada | Regularización mayor que en M1–M3. | | | |
+
+Se elige el `alpha` con menor MAE medio en las cinco particiones 1–5, aunque no mejore a la regresión lineal; si hay empate, se elige el `alpha` menor. No se estandarizan las variables numéricas antes de Ridge. No se usa `validacion` para elegir el `alpha`.
 
 ## 5. Salidas
 
@@ -122,13 +137,13 @@ Una fila por valor de λ. Escribid antes cómo elegiréis λ y qué haréis si n
 Las del contrato (AGENTS.md §3) y las que añadáis vosotros (por ejemplo, tablas extra para el cuadro de mando).
 -->
 
-| Fichero | Qué contiene | Lo escribe |
-| --- | --- | --- |
-| `reports/experimentos.csv` | Una fila por estrategia con su MAE por partición | `src.experimentos` |
-| `models/modelo.joblib` | El modelo final entrenado con las particiones 1-5 | `src.entrenar` |
-| `reports/metricas.json` | MAE y RMSE del baseline y del modelo en `validacion`, con IC 95 % | `src.entrenar` |
-| `reports/predicciones_validacion.csv` | Precio real, predicción del modelo y del baseline de cada vivienda de `validacion` | `src.entrenar` |
-| `entregables/envio_kaggle.csv` | Predicción de cada vivienda del test | `src.predecir` |
+| Fichero                                 | Qué contiene                                                                         | Lo escribe           |
+| --------------------------------------- | ------------------------------------------------------------------------------------- | -------------------- |
+| `reports/experimentos.csv`            | Una fila por estrategia con su MAE por partición                                     | `src.experimentos` |
+| `models/modelo.joblib`                | El modelo final entrenado con las particiones 1-5                                     | `src.entrenar`     |
+| `reports/metricas.json`               | MAE y RMSE del baseline y del modelo en `validacion`, con IC 95 %                   | `src.entrenar`     |
+| `reports/predicciones_validacion.csv` | Precio real, predicción del modelo y del baseline de cada vivienda de `validacion` | `src.entrenar`     |
+| `entregables/envio_kaggle.csv`        | Predicción de cada vivienda del test                                                 | `src.predecir`     |
 
 ## 6. Requisitos
 
@@ -147,26 +162,32 @@ Continuad la numeración del ejemplo resuelto (R8, R9…) y escribid los de cada
 - R5. Modelo mínimo: regresión lineal con `superficie_construida`, `habitaciones`, `banos`, `distancia_centro_km` y `poblacion_zona`, sin transformar. Es la referencia de las estrategias.
 - R6. El modelo final se entrena con las particiones 1-5 y se mide una vez en `validacion`, junto al baseline entrenado con las mismas filas.
 - R7. El envío a Kaggle son las predicciones del modelo guardado para las 4.002 viviendas del test.
+- R8. `reports/experimentos.csv` incluye para cada estrategia su referencia (el valor de `estrategia` de la fila de referencia), el MAE de cada fold, la media y la desviación estándar muestral (`ddof=1`), la mejora media en euros (`mae_referencia - mae_estrategia`), el número de folds en que mejora y un booleano `aceptada`. La referencia queda vacía para `baseline` y `modelo_minimo`. Se acepta una estrategia solo si la mejora media es de al menos 1.000 € y mejora en al menos 4 de los 5 folds.
+- R9. En L1 (`l1_superficie_corregida`), los ceros de `superficie_construida` se tratan como ausentes y se sustituyen por la mediana de los valores no nulos y no cero aprendida solo con las filas del fold de entrenamiento; los demás valores, incluidos los extremos, no se modifican. En L2 (`l2_superficie_util`), los vacíos de `superficie_util` se imputan con la mediana aprendida solo con las filas del fold de entrenamiento.
+- R10. En las estrategias T1–T5, las categorías se codifican con One-Hot Encoding. T1 usa el municipio cuando falta el barrio. T2 trata un parking vacío como `No`; T3 lo conserva como `Sin dato`. T4 conserva un `estado` vacío como `Sin dato`. T5 normaliza mayúsculas y acentos de `tipo` antes de codificarlo.
+- R11. T6 solo infiere un barrio cuando `municipi == Barcelona` y `barri` está vacío: primero usa el barrio más frecuente para el mismo código postal, calculado con el fold de entrenamiento; si hay empate o no hay correspondencia, usa el centroide de barrio más cercano calculado con ese fold. El centroide es la media de latitud y longitud de las filas del fold con ese barrio y coordenadas válidas. Si no puede inferir un único barrio (por falta de coordenadas o empate de distancia), usa `Barcelona` como zona. Ningún mapeo se calcula con validación o test.
+- R12. N1 calcula `banos / habitaciones`. Si `habitaciones == 0`, deja la relación vacía y la imputa con la mediana de la relación calculada en el fold de entrenamiento. N2 imputa primero `superficie_util` con la mediana de esa variable en el fold de entrenamiento y después calcula `superficie_util / habitaciones`; si `habitaciones == 0`, imputa la relación vacía con su mediana calculada en ese fold.
+- R13. Se prueban Ridge con `alpha` 0,001, 0,01, 0,1 y 1, usando en cada caso las mismas variables que la última estrategia aceptada de fase 3 y sin estandarizar las variables numéricas. Se elige el `alpha` con menor MAE medio en los folds 1–5, aunque no mejore a la regresión lineal; si hay empate, se elige el menor `alpha`. `validacion` no se usa para seleccionarlo.
 
 **Cómo decidimos**
 
-<!-- La regla de decisión de §4 y las columnas que necesitáis en experimentos.csv para aplicarla (referencia, mejora media, particiones en las que mejora…). -->
+`experimentos.csv` incluye `referencia`, `mae_p1` … `mae_p5`, `mae_medio`, `mae_sd`, `mejora_media_euros` y `particiones_mejora`. `mejora_media_euros` es la media de `mae_referencia - mae_estrategia` en los cinco folds; `particiones_mejora` cuenta los folds en que esa diferencia es positiva. Se acepta una estrategia solo si `mejora_media_euros >= 1000` y `particiones_mejora >= 4`.
 
 **Fase 1 · Limpieza**
 
-<!-- Qué hace limpiar_objetivo() con cada fila (qué quita, qué corrige) y cómo se corrigen los demás valores erróneos. -->
+L1 y L2 se describen en R9. La limpieza del objetivo sigue siendo fila a fila, según R1 y las reglas de `limpiar_objetivo()` que se definan antes de esa tarea.
 
 **Fase 2 · Transformaciones**
 
-<!-- Para cada variable: cómo se convierte, cómo se rellenan sus vacíos y qué pasa con un valor que no aparece en el entrenamiento. -->
+Las codificaciones categóricas, sus categorías para vacíos y la inferencia de barrio están especificadas en R10–R11.
 
 **Fase 3 · Variables nuevas**
 
-<!-- La fórmula de cada variable nueva, con qué hacer si le falta un dato. -->
+Las fórmulas y los casos de cero o datos ausentes de N1 y N2 están especificados en R12.
 
 **Fase 4 · Modelo y explicación**
 
-<!-- Qué valores de λ probáis, cómo elegís el modelo final y qué devuelve explicar() (CM5). -->
+Los valores de `alpha`, la selección y la ausencia de estandarización están especificados en R13. La explicación del modelo sigue pendiente de CM5.
 
 **Cuadro de mando**
 
@@ -200,6 +221,9 @@ Lo que no se pueda testear (p. ej. si un gráfico se entiende) indicad cómo se 
 
 **Vuestros criterios**
 
+- CA5 (R8). `experimentos.csv` contiene las columnas `estrategia`, `referencia`, `mae_p1` … `mae_p5`, `mae_medio`, `mae_sd`, `mejora_media_euros`, `particiones_mejora` y `aceptada`. Con cada fila que tenga referencia, las mejoras por fold son `mae_p<fold>(referencia) - mae_p<fold>(estrategia)`; `mejora_media_euros` es la media de esas cinco diferencias, `particiones_mejora` cuenta las diferencias positivas y `aceptada` es verdadero exactamente cuando la mejora media es al menos 1.000 € y mejora en 4 o 5 folds. Las referencias nombran una estrategia existente; `baseline` y `modelo_minimo` tienen la referencia vacía.
+- CA6 (R9). Con las cuatro filas de entrenamiento de `test_superficies`, L1 transforma `superficie_construida` `[100, 0, 300, 2000]` en `[100, 300, 300, 2000]`: la mediana de los valores no cero es 300 y el extremo 2.000 no cambia. L2 transforma `superficie_util` `[40, NaN, 80, 120]` en `[40, 80, 80, 120]`: la mediana de entrenamiento es 80. Las medianas se ajustan solo al entrenar cada pipeline.
+
 ## 8. Fuera de alcance
 
 - Modelos no lineales (árboles, *ensembles*, redes, k vecinos): llegan en las sesiones 14 y 15.
@@ -210,6 +234,9 @@ Lo que no se pueda testear (p. ej. si un gráfico se entiende) indicad cómo se 
 ## 9. Preguntas abiertas
 
 <!-- Dudas pendientes de decidir. Cuando se decidan, pasan a "Decisiones". -->
+
+- ¿Qué distancia se usa para decidir cuál centroide de barrio es el más cercano en T6? El documento ya fija cómo calcular los centroides, pero aún no la métrica de distancia.
+- Completar y validar los criterios CA5 en adelante para R8–R13 antes de implementar las fases; la sección «Vuestros criterios» sigue vacía.
 
 ## 10. Decisiones
 

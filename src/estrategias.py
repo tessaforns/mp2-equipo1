@@ -12,6 +12,7 @@ from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
 
 from src.baseline import BaselineMetroCuadrado
 
@@ -35,14 +36,33 @@ def modelo_minimo() -> Pipeline:
     return Pipeline([("preparacion", seleccion), ("regresion", LinearRegression())])
 
 
+def l1_superficie_corregida() -> Pipeline:
+    """Sustituye los ceros de superficie construida por la mediana del fold de entrenamiento (R9)."""
+    resto_variables = [variable for variable in VARIABLES_MINIMO if variable != "superficie_construida"]
+    preparacion = ColumnTransformer(
+        [
+            (
+                "superficie",
+                SimpleImputer(missing_values=0, strategy="median"),
+                ["superficie_construida"],
+            ),
+            ("resto", "passthrough", resto_variables),
+        ]
+    )
+    return Pipeline([("preparacion", preparacion), ("regresion", LinearRegression())])
+
+
 ESTRATEGIAS: list[Estrategia] = [
     Estrategia("baseline", "baseline",
                "€/m² mediano de la zona × superficie construida", BaselineMetroCuadrado),
     Estrategia("modelo_minimo", "minimo",
                "Regresión lineal con las 5 variables numéricas sin nulos, sin transformar", modelo_minimo),
-    # El agente añade aquí una estrategia por cada fila de SPECS.md §4, en el orden de las fases.
-    # El equipo no edita este fichero: escribe la fila en SPECS.md y pide la tarea al agente. Por ejemplo:
-    # Estrategia("l1_superficie_corregida", "estrategia", "Modelo mínimo con la superficie corregida", l1_superficie_corregida),
+    Estrategia(
+        "l1_superficie_corregida",
+        "estrategia",
+        "Modelo mínimo con los ceros de superficie construida imputados por la mediana del fold",
+        l1_superficie_corregida,
+    ),
 ]
 
 # La estrategia que se entrena como modelo final (uv run python -m src.entrenar).
