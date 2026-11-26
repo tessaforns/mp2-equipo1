@@ -34,8 +34,10 @@ Pistas:
 - [x] 1. Preparar tests de aceptación de las decisiones experimentales y limpieza de superficies (R8-R9, CA5-CA6)
   - Agente: redactó los tests CA5-CA6; `uv run pytest --collect-only -q tests/acceptance/test_criterios_fase1.py` recogió los 3 tests y `uv run python scripts/trazabilidad.py` reconoció todos los criterios. Las comprobaciones de comportamiento quedan para cuando se implementen R8-R9.
   - Verificado por: @tessaforns · validó los ejemplos y resultados esperados de CA5-CA6.
-- [ ] 2. Implementar L1: sustituir ceros de `superficie_construida` por la mediana del fold de entrenamiento (R9, CA6)
-- [ ] 3. Implementar L2: añadir `superficie_util` con imputación aprendida en cada fold (R9, CA6)
+- [x] 2. Implementar L1: sustituir ceros de `superficie_construida` por la mediana del fold de entrenamiento (R9, CA6)
+  - Agente: añadió `l1_superficie_corregida` al pipeline; test CA6 de L1 y tests CA1-CA4 pasan. Validación cruzada: MAE medio 127.757,23 € frente a 127.934,20 € de `modelo_minimo`; el informe no se regeneró porque `reports/experimentos.csv` está en conflicto Git.
+- [x] 3. Implementar L2: añadir `superficie_util` con imputación aprendida en cada fold (R9, CA6)
+  - Agente: añadió `l2_superficie_util` al pipeline; CA6 de L1/L2 y tests CA1-CA4 pasan. Validación cruzada frente a `modelo_minimo`: MAE medio 123.072,80 € frente a 127.934,20 €, mejora en 5/5 folds. El informe no se regeneró porque `reports/experimentos.csv` está en conflicto Git.
 
 ## Fase 2 · Transformaciones (sesión 12)
 

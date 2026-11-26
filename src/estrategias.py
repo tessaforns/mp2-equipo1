@@ -10,9 +10,9 @@ from typing import Callable
 
 from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
 
 from src.baseline import BaselineMetroCuadrado
 
@@ -52,6 +52,21 @@ def l1_superficie_corregida() -> Pipeline:
     return Pipeline([("preparacion", preparacion), ("regresion", LinearRegression())])
 
 
+def l2_superficie_util() -> Pipeline:
+    """Añade superficie útil imputando sus vacíos con la mediana del fold de entrenamiento (R9)."""
+    preparacion = ColumnTransformer(
+        [
+            (
+                "superficie_util",
+                SimpleImputer(strategy="median"),
+                ["superficie_util"],
+            ),
+            ("resto", "passthrough", VARIABLES_MINIMO),
+        ]
+    )
+    return Pipeline([("preparacion", preparacion), ("regresion", LinearRegression())])
+
+
 ESTRATEGIAS: list[Estrategia] = [
     Estrategia("baseline", "baseline",
                "€/m² mediano de la zona × superficie construida", BaselineMetroCuadrado),
@@ -62,6 +77,12 @@ ESTRATEGIAS: list[Estrategia] = [
         "estrategia",
         "Modelo mínimo con los ceros de superficie construida imputados por la mediana del fold",
         l1_superficie_corregida,
+    ),
+    Estrategia(
+        "l2_superficie_util",
+        "estrategia",
+        "Añade superficie útil imputando sus vacíos con la mediana del fold",
+        l2_superficie_util,
     ),
 ]
 
