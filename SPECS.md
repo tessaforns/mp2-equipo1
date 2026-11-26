@@ -33,10 +33,9 @@ La fila P1 es un ejemplo: dejadla y seguid con P2, P3…
 
 Lo encontramos con `notebooks/exploracion.ipynb`. Entrenamiento: 6.237 filas. Test: 4.002.
 
-| Id | Columna | Qué pasa (con cifras) | Por qué importa | Fase |
-| --- | --- | --- | --- | --- |
-| P1 | `estado_operacion` | 620 filas (10 %) son anuncios retirados, que no se vendieron. El test solo tiene ventas | Su precio es lo que se pedía, no lo que se pagó | 1 · Limpieza |
-| | | | | |
+P3
+
+
 
 ## 4. Estrategias y experimentos
 
@@ -65,16 +64,13 @@ y qué esperáis que pase (la hipótesis). Después, con experimentos.csv, relle
 La primera fila de cada fase es un ejemplo para arrancar: podéis quedárosla, cambiarla o borrarla.
 -->
 
-**Regla de decisión** (escrita antes de ejecutar nada): <!-- Cuándo aceptáis una estrategia. Por ejemplo: "si baja el MAE de su referencia en al menos 4 de las 5 particiones y en al menos N € de media". ¿Qué hacéis si no se cumple? -->
+**Regla de decisión** (escrita antes de ejecutar nada): 
 
 Cómo leemos los resultados: `src.experimentos` da el MAE de cada partición (`mae_p1` … `mae_p5`). Comparamos cada estrategia con su referencia partición a partición, porque hay particiones más difíciles que otras para todas las estrategias a la vez.
 
 ### Punto de partida (ejemplo resuelto)
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| E0 | baseline | €/m² mediano de la zona × superficie construida | — | — | | — | La tasación que hay que batir |
-| E1 | minimo | Regresión lineal con `superficie_construida`, `habitaciones`, `banos`, `distancia_centro_km` y `poblacion_zona`, sin transformar | — | _Vuestra hipótesis: ¿mejor o peor que E0? ¿Por qué?_ | | — | |
+
 
 ### Fase 1 · Limpieza
 
@@ -85,24 +81,24 @@ la cambiéis, volved a ejecutar E0 y E1 y anotad sus cifras nuevas aquí.
 El resto de la limpieza (por ejemplo, la superficie) sí son estrategias, dentro del Pipeline.
 -->
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| L1 | estrategia | Modelo mínimo con la superficie corregida | E1 | Mejora: las superficies de 1.500 m² inflan la tasación | | | |
-| | | | | | | | |
+| Id | Tipo       | Qué cambia                                | Referencia | Hipótesis                                               | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | ---------- | ------------------------------------------ | ---------- | -------------------------------------------------------- | --------------- | --------------------------- | ----------- |
+| L1 | estrategia | Modelo mínimo con la superficie corregida | E1         | Mejora: las superficies de 1.500 m² inflan la tasación |                 |                             |             |
+| L2 |            |                                            |            |                                                          |                 |                             |             |
 
 ### Fase 2 · Transformaciones
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| T1 | estrategia | Añade la zona como categoría | L1 | Mejora mucho: en Pedralbes el m² vale el triple que en Nou Barris | | | |
-| | | | | | | | |
+| Id | Tipo       | Qué cambia                    | Referencia | Hipótesis                                                         | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | ---------- | ------------------------------ | ---------- | ------------------------------------------------------------------ | --------------- | --------------------------- | ----------- |
+| T1 | estrategia | Añade la zona como categoría | L1         | Mejora mucho: en Pedralbes el m² vale el triple que en Nou Barris |                 |                             |             |
+|    |            |                                |            |                                                                    |                 |                             |             |
 
 ### Fase 3 · Variables nuevas
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| N1 | caracteristica | Añade la relación baños / habitaciones | Última aceptada | _Vuestra hipótesis_ | | | |
-| | | | | | | | |
+| Id | Tipo           | Qué cambia                               | Referencia       | Hipótesis             | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | -------------- | ----------------------------------------- | ---------------- | ---------------------- | --------------- | --------------------------- | ----------- |
+| N1 | caracteristica | Añade la relación baños / habitaciones | Última aceptada | _Vuestra hipótesis_ |                 |                             |             |
+|    |                |                                           |                  |                        |                 |                             |             |
 
 ### Fase 4 · Modelo
 
@@ -111,10 +107,10 @@ Las mismas variables que la última estrategia aceptada en la fase 3; solo cambi
 Una fila por valor de λ. Escribid antes cómo elegiréis λ y qué haréis si ningún Ridge mejora a la regresión lineal.
 -->
 
-| Id | Tipo | Qué cambia | Referencia | Hipótesis | MAE medio ± sd | Mejora media · particiones | Conclusión |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 | estrategia | Ridge con λ = 0,01 | Última aceptada | Igual que la regresión lineal: λ muy pequeño | | | |
-| | | | | | | | |
+| Id | Tipo       | Qué cambia         | Referencia       | Hipótesis                                      | MAE medio ± sd | Mejora media · particiones | Conclusión |
+| -- | ---------- | ------------------- | ---------------- | ----------------------------------------------- | --------------- | --------------------------- | ----------- |
+| M1 | estrategia | Ridge con λ = 0,01 | Última aceptada | Igual que la regresión lineal: λ muy pequeño |                 |                             |             |
+|    |            |                     |                  |                                                 |                 |                             |             |
 
 ## 5. Salidas
 
@@ -122,13 +118,13 @@ Una fila por valor de λ. Escribid antes cómo elegiréis λ y qué haréis si n
 Las del contrato (AGENTS.md §3) y las que añadáis vosotros (por ejemplo, tablas extra para el cuadro de mando).
 -->
 
-| Fichero | Qué contiene | Lo escribe |
-| --- | --- | --- |
-| `reports/experimentos.csv` | Una fila por estrategia con su MAE por partición | `src.experimentos` |
-| `models/modelo.joblib` | El modelo final entrenado con las particiones 1-5 | `src.entrenar` |
-| `reports/metricas.json` | MAE y RMSE del baseline y del modelo en `validacion`, con IC 95 % | `src.entrenar` |
-| `reports/predicciones_validacion.csv` | Precio real, predicción del modelo y del baseline de cada vivienda de `validacion` | `src.entrenar` |
-| `entregables/envio_kaggle.csv` | Predicción de cada vivienda del test | `src.predecir` |
+| Fichero                                 | Qué contiene                                                                         | Lo escribe           |
+| --------------------------------------- | ------------------------------------------------------------------------------------- | -------------------- |
+| `reports/experimentos.csv`            | Una fila por estrategia con su MAE por partición                                     | `src.experimentos` |
+| `models/modelo.joblib`                | El modelo final entrenado con las particiones 1-5                                     | `src.entrenar`     |
+| `reports/metricas.json`               | MAE y RMSE del baseline y del modelo en `validacion`, con IC 95 %                   | `src.entrenar`     |
+| `reports/predicciones_validacion.csv` | Precio real, predicción del modelo y del baseline de cada vivienda de `validacion` | `src.entrenar`     |
+| `entregables/envio_kaggle.csv`        | Predicción de cada vivienda del test                                                 | `src.predecir`     |
 
 ## 6. Requisitos
 
@@ -218,3 +214,13 @@ Una línea por decisión: fecha · qué se decide · requisitos afectados · por
 Ejemplo:
 - 2026-12-01 · Aceptamos T1 (la zona como categoría) · R12 · Baja el MAE medio de N € a M € y mejora en 5 de 5 particiones.
 -->
+
+| Id | Tipo     | Qué cambia                                                                                                                                 | Referencia | Hipótesis                                                 | MAE medio ± sd | Mejora media · particiones | Conclusión                    |
+| -- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------- | --------------- | --------------------------- | ------------------------------ |
+| E0 | baseline | €/m² mediano de la zona × superficie construida                                                                                          | —         | —                                                         |                 | —                          | La tasación que hay que batir |
+| E1 | minimo   | Regresión lineal con `superficie_construida`, `habitaciones`, `banos`, `distancia_centro_km` y `poblacion_zona`, sin transformar | —         | _Vuestra hipótesis: ¿mejor o peor que E0? ¿Por qué?_ |                 | —<br /><br /><br /><br />  |                                |
+
+| Id | Columna              | Qué pasa (con cifras)                                                                  | Por qué importa                                             | Fase          |
+| -- | -------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------- |
+| P1 | `estado_operacion` | 620 filas (10 %) son anuncios retirados, que no se vendieron. El test solo tiene ventas | Su precio es lo que se pedía, no lo que se pagó            | 1 · Limpieza |
+| P2 | barri                | 1503 valores nulos (24.1%) son valores nulos,                                           | Porque el barrio y la ubicación del barrio afecta su precio | 1. Limpieza   |
